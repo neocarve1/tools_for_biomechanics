@@ -1,3 +1,19 @@
+import numpy as np
+import pandas as pd
+import scipy
+import matplotlib.pyplot as plt
+
+# NoLiTSA 라이브러리 import
+
+!git clone https://github.com/manu-mannattil/nolitsa.git
+!pip install ./nolitsa
+
+import nolitsa
+
+from nolitsa import data, delay, dimension, lyapunov
+from sklearn.linear_model import LinearRegression
+
+
 """
 데이터를 기준점으로 자르고 resampling 하는 함수
 
@@ -98,3 +114,60 @@ def differentiate_data_and_resample(data, points, sampling_rate, resample_dim, o
     return result
 
 
+def Lyapunov_Exponet_full_process(data, cycle_dim):
+    mi = delay.dmi(data, maxtau = cycle_dim*3, bins=int((len(data)/5)**0.5))
+
+    plt.plot(mi)
+    plt.title('Delayed mutual information')
+    plt.xlabel('time delay')
+    plt.ylabel('Mutual Information')
+    plt.show()
+
+    for i in range(100):
+        if mi[i-1] > mi[i] and mi[i] < mi[i+1]:
+            tau = i
+            print("first minimum of AMI:", tau)
+            break
+    
+    dim = np.arange(1, 15+1)
+    f1, f2, f3 = dimension.fnn(data, tau=tau, dim=dim, metric='euclidean')
+    plt.xlabel(r'Embedding dimension $d$')
+    plt.ylabel(r'FNN (%)')
+    plt.plot(dim, 100 * f1, 'bo--', label=r'Test I')
+    plt.plot(dim, 100 * f2, 'g^--', label=r'Test II')
+    plt.plot(dim, 100 * f3, 'rs-', label=r'Test I or II')
+    plt.legend()
+    plt.show()
+
+    for i in range(1, 15+1):
+        if f3[i-1] == 0:
+            embedding_dim = i
+            print("embedding dimension:", embedding_dim)
+            break
+    else:
+        print("Error: GFNN doesn't converge to 0 until dimension 15")
+        return 'Error', 'Error'
+
+    d = lyapunov.mle_embed(data, dim=[embedding_dim], tau=tau, maxt=cycle_dim*10)
+    t = np.arange(cycle_dim*10).reshape(-1, 1)
+
+    short_term = LinearRegression()
+    short_term.fit(t[:cycle_dim]/cycle_dim, d[0, :cycle_dim])
+    short_term_LE = short_term.coef_
+
+    long_term = LinearRegression()
+    long_term.fit(t[cycle_dim*4:]/cycle_dim, d[0, cycle_dim*4:])
+    long_term_LE = long_term.coef_
+
+    plt.xlabel(r'Steps #')
+    plt.ylabel(r'Average divergence $\langle d_i(t) \rangle$')
+    plt.plot(t/cycle_dim, d[0])
+    plt.plot(t[:cycle_dim]/cycle_dim, short_term.predict(t[:cycle_dim]/cycle_dim))
+    plt.plot(t[cycle_dim*4:]/cycle_dim, long_term.predict(t[cycle_dim*4:]/cycle_dim))
+
+    plt.show()
+
+    print("Short-term Lyapunov Exponent: {}".format(short_term_LE[0]))
+    print("Long-term Lyapunov Exponent: {}".format(long_term_LE[0]))
+
+    return short_term_LE, long_term_LE
