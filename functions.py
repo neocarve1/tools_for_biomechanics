@@ -117,6 +117,7 @@ def differentiate_data_and_resample(data, points, sampling_rate, resample_dim, o
 def Lyapunov_Exponet_full_process(data, cycle_dim):
     mi = delay.dmi(data, maxtau = cycle_dim*3, bins=int((len(data)/5)**0.5))
 
+    plt.figure()
     plt.plot(mi)
     plt.title('Delayed mutual information')
     plt.xlabel('time delay')
@@ -131,6 +132,7 @@ def Lyapunov_Exponet_full_process(data, cycle_dim):
     
     dim = np.arange(1, 15+1)
     f1, f2, f3 = dimension.fnn(data, tau=tau, dim=dim, metric='euclidean')
+    plt.figure()
     plt.xlabel(r'Embedding dimension $d$')
     plt.ylabel(r'FNN (%)')
     plt.plot(dim, 100 * f1, 'bo--', label=r'Test I')
@@ -159,6 +161,7 @@ def Lyapunov_Exponet_full_process(data, cycle_dim):
     long_term.fit(t[cycle_dim*4:]/cycle_dim, d[0, cycle_dim*4:])
     long_term_LE = long_term.coef_
 
+    plt.figure()
     plt.xlabel(r'Steps #')
     plt.ylabel(r'Average divergence $\langle d_i(t) \rangle$')
     plt.plot(t/cycle_dim, d[0])
